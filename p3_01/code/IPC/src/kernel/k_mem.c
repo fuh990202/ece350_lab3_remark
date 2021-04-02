@@ -206,7 +206,7 @@ int k_mem_dealloc(void *ptr) {
                     printf("Condition 1: merge both\r\n");
                 #endif /* DEBUG_0 */
 
-                curr->size = curr->size + ((node_t *)ptr)->size + curr_next->size + node_size;
+                curr->size = curr->size + ptr_header->size + curr_next->size + node_size;
                 curr->next = curr_next->next;
             }
 

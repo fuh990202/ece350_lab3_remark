@@ -174,7 +174,7 @@ int k_recv_msg(task_t *sender_tid, void *buf, size_t len) {
         dequeue();
         g_num_active_tasks--;
         k_tsk_run_new();
-        return RTX_ERR;
+//        return RTX_ERR;
     }
 
     RTX_MSG_HDR *msg_recv = gp_current_task->head;

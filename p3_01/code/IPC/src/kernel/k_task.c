@@ -329,7 +329,8 @@ int k_tsk_init(RTX_TASK_INFO *task_info, int num_tasks)
             curr_tid++;
             p_tcb = &g_tcbs[curr_tid];
         }
-        p_tcb->u_stack_size = 0;
+        p_tcb->priv = p_taskinfo->priv;
+        p_tcb->u_stack_size = p_taskinfo->u_stack_size;
         p_tcb->u_sp = 0;
         p_tcb->u_stack_hi = 0;
         p_tcb->prio = p_taskinfo->prio;
@@ -413,12 +414,12 @@ int k_tsk_create_new(RTX_TASK_INFO *p_taskinfo, TCB *p_tcb, task_t tid)
     // if kernel task runs under SVC mode, then no need to create user context stack frame for SVC handler entering
     // since we never enter from SVC handler in this case
     // uSP: initial user stack
+    p_tcb->ptask = p_taskinfo->ptask;
     if ( p_taskinfo->priv == 0 ) { // unprivileged task
         // xPSR: Initial Processor State
         *(--sp) = INIT_CPSR_USER;
         // PC contains the entry point of the user/privileged task
         *(--sp) = (U32) (p_taskinfo->ptask);
-        p_tcb->ptask = p_taskinfo->ptask;
 
         //********************************************************************//
         //*** allocate user stack from the user space, not implemented yet ***//
@@ -573,6 +574,9 @@ int k_tsk_create(task_t *task, void (*task_entry)(void), U8 prio, U16 stack_size
     printf("task = 0x%x, task_entry = 0x%x, prio=%d, stack_size = %d\n\r", task, task_entry, prio, stack_size);
 #endif /* DEBUG_0 */
 
+    if (task == NULL || task_entry == NULL) {
+        return RTX_ERR;
+    }
     // if capacity reached maximum, cannot create more task and return err
     if (g_num_active_tasks >= MAX_TASKS) {
         return RTX_ERR;
@@ -698,6 +702,13 @@ int k_tsk_set_prio(task_t task_id, U8 prio)
         return RTX_ERR;
     }
 
+    int flag = 0;
+    if (gp_current_task->prio > prio) {
+        flag = 1;
+    } else {
+        flag = -1;
+    }
+
     update_task->prio = prio;
     // update_task->degree = *(degrees[prio-100]);
     // *(degrees[prio-100]) = *(degrees[prio-100]) + 1;
@@ -706,9 +717,14 @@ int k_tsk_set_prio(task_t task_id, U8 prio)
 
     for (int i=0; i<size; i++) {
         if (pq[i]->tid == task_id) {
-            swap( &pq[i], &pq[size-1]);
-            size--;
-            enqueue(update_task);
+            if (flag == -1) {
+                max_heapify(i, size);
+            } else {
+                while (i != 0 && compare(pq[i], pq[parent(i)])) {
+                    swap( &pq[parent(i)], &pq[i]);
+                    i = parent(i);
+                }
+            }
             break;
         }
     }

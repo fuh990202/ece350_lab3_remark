@@ -68,19 +68,13 @@ void kcd_task(void)
         else if (((RTX_MSG_HDR *)message)->type == KEY_IN) {
             U8 input = *(message+sizeof(RTX_MSG_HDR));
             if (input == 0x0d) {
-                int buffer_length = sizeof(RTX_MSG_HDR) + length;
+                int buffer_length = sizeof(RTX_MSG_HDR) + length-1;
                 // create message for the corresponding registered task
                 U8 *buf = mem_alloc(buffer_length);
                 RTX_MSG_HDR *msg_ptr = (void *)buf;
                 msg_ptr->length = buffer_length;
                 msg_ptr->type = KCD_CMD;
                 buf += sizeof(RTX_MSG_HDR);
-                curr = head->next;
-                while (curr != NULL) {
-                    *buf = curr->val;
-                    buf++;
-                    curr = curr->next;
-                }
 
                 // get identifier and search through registered identifier
                 U8 msg_identifier;
@@ -91,6 +85,14 @@ void kcd_task(void)
                 } else {
                     msg_identifier = head->next->next->val;
                 }
+
+                curr = head->next->next;
+                while (curr != NULL) {
+                    *buf = curr->val;
+                    buf++;
+                    curr = curr->next;
+                }
+
 
                 int receiver_tid = -1;
                 for (int i=0; i<count; i++) {
